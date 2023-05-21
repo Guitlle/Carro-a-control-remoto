@@ -1,0 +1,103 @@
+  <!DOCTYPE html><html><head><title>Carrito</title><meta name='viewport' content='width=device-width,initial-scale=1,maximum-scale=1'>
+  <style>
+    * {font-family: monospace;}
+    body{background: black; color: white;}
+    button {background: #5e5; color: black; font-weight: bold; font-size:40px; display: flex; flex-grow: 1; height: 200px;text-align: center; display: inline-block;border: 0px solid; margin: 10px; border-radius: 20px; }
+    p {display: flex;}
+    .no-select {
+      -webkit-user-select: none; /* Safari */
+      -ms-user-select: none; /* IE 10 and IE 11 */
+      user-select: none; /* Standard syntax */
+    }
+  </style>
+  </head><body>
+  <script>
+  function setupPWM(channel, freq, res, pin) {
+    var ajax = new XMLHttpRequest();
+    ajax.open('GET', '/setupPWM?channel='+channel+'&freq='+freq+'&res='+res, true);
+    ajax.send();
+    var ajaxP = new XMLHttpRequest();
+    ajaxP.open('GET', '/pinPWM?channel='+channel+'&pin='+pin, true);
+    ajaxP.send();
+  }
+  function setKeyValue(key, value) {
+    var ajax = new XMLHttpRequest();
+    ajax.open('GET', '/keyStore/set?key='+key+'&value='+value);
+    ajax.send();
+  }
+  function setup() {
+    var ajax = new XMLHttpRequest();
+    ajax.open('GET', '/keyStore/get?key=setup');
+    ajax.onload = (e) => {
+      if (ajax.responseText != 'done') {
+        setupPWM(2, 100, 8, 32);
+        setupPWM(3, 100, 8, 33);
+        setupPWM(4, 50, 16, 26);
+        setKeyValue('setup', 'done');
+      }
+    }
+    ajax.send();
+  }
+  function writePWM(channel, duty) {
+    var ajax = new XMLHttpRequest();
+    ajax.open('GET', '/writePWM?channel='+channel+'&duty=' + duty, true);
+    ajax.send();
+  }
+  function log(message) {
+    var ajax = new XMLHttpRequest();
+    console.log(message.split("").map( (i) => {return [i,  i.charCodeAt()];} ));
+    ajax.open('GET', '/log?message='+message.replace(" ", "_"), true);
+    ajax.send();
+  }
+  function reset() {
+    log('Reset ');
+    writePWM(2, 0)
+    writePWM(4, 5000)
+  }
+  var touchStart = null;
+  function startMoving() {
+    var e = event;
+    log('Touch start ' + e);
+    touchStart = [e.targetTouches[0].pageX, e.targetTouches[0].pageY];
+    log('Touch start ' + touchStart);
+  }
+  function touchMove() {
+    var e = event;
+    log('Touch move ' + e);
+    var coordsnow = [e.targetTouches[0].pageX, e.targetTouches[0].pageY];
+    log('Touch move ' + coordsnow, touchStart);
+    if (coordsnow[0] > touchStart[0])
+      writePWM(4, 7000);
+    if (coordsnow[0] < touchStart[0])
+      writePWM(4, 3000);
+    if (coordsnow[1] < touchStart[1])
+      writePWM(2, 255);
+  }
+
+  function test() {
+    log("test message");
+    var ajax = new XMLHttpRequest();
+    ajax.open('GET', '/keyStore/get?key=setup');
+    ajax.onload = (e) => {
+      log("Got keyStore value");
+      log(ajax.responseText);
+      var ajax2 = new XMLHttpRequest();
+      ajax2.open('GET', '/keyStore/set?key=setup&value=test');
+      ajax2.onload = (e) => {
+        log("Set a keyStore value");
+        log(ajax.responseText);
+      }
+      ajax2.send();
+    }
+    ajax.send();
+  }
+
+  window.addEventListener('load', function () {
+    setup();
+  })
+  </script>
+
+  <p class="no-select"><button ontouchstart='startMoving()' ontouchend='reset()' ontouchmove='touchMove()'></button> </p>
+  <br><br><br><br><br><br><br><br><p><b onclick='test()'>test</b></p>
+
+  </body></html>
